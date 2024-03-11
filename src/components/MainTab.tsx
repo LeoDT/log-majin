@@ -119,6 +119,7 @@ export function MainTab(): JSX.Element {
         w="full"
         h={`calc(100% - ${TAB_HEIGHT})`}
         overflow="hidden"
+        pt="1"
       >
         {TABS.map(({ id, children }, i) => (
           <a.div

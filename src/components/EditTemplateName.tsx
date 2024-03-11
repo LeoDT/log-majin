@@ -4,7 +4,6 @@ import {
   Popover,
   PopoverArrow,
   PopoverBody,
-  PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
   SimpleGrid,
@@ -27,12 +26,16 @@ export function EditTemplateName({ templateAtom }: Props): JSX.Element {
     <HStack display="inline-flex" gap="0">
       <Popover>
         <PopoverTrigger>
-          <Button size="xs" mr="2" bgColor={color} />
+          <Button
+            size="xs"
+            mr="2"
+            bgColor={color}
+            _hover={{ bgColor: color, opacity: 0.8 }}
+          />
         </PopoverTrigger>
 
         <PopoverContent maxW="100vw" w="auto">
           <PopoverArrow />
-          <PopoverCloseButton />
           <PopoverBody>
             <SimpleGrid columns={6} spacing={2}>
               {colorsForTemplate.map((c) => (
@@ -40,6 +43,7 @@ export function EditTemplateName({ templateAtom }: Props): JSX.Element {
                   key={c}
                   size="xs"
                   bgColor={c}
+                  _hover={{ bgColor: c, opacity: 0.8 }}
                   onClick={() => setTemplate({ color: c })}
                 />
               ))}

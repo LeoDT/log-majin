@@ -20,7 +20,7 @@ interface Props<T> {
     scrollTop: number;
   };
   onScroll: (dir: 1 | -1) => void;
-  onDragEnd: (items: T[]) => void;
+  onDragEnd: (items: T[], item: T, beforeItem?: T) => void;
   itemGap?: number;
 }
 
@@ -148,7 +148,7 @@ export function DraggableList<T>({
       const promise = api.start((i, c) => {
         if (active && i === originalIndex) {
           return {
-            y: curY + y + scrolled,
+            y: curY + y + scrolled + 1,
             scale: 1.06,
             opacity: 0.8,
             zIndex: 1,
@@ -161,7 +161,7 @@ export function DraggableList<T>({
           const id = c.springs.id.get();
           const index = newOrder.findIndex(([iid]) => iid === id);
           return {
-            y: calculateYWithIndex(newOrder, index),
+            y: calculateYWithIndex(newOrder, index) + 1,
             scale: 1,
             opacity: 1,
             shadow: 0,
@@ -176,7 +176,12 @@ export function DraggableList<T>({
 
         setTimeout(async () => {
           await Promise.all(promise);
-          onDragEnd(reorderItems(newOrder.map(([id]) => id)));
+
+          const a = items[curIndex];
+          const bIndex = curIndex > newIndex ? newIndex : newIndex + 1;
+          const b = bIndex >= items.length ? undefined : items[bIndex];
+
+          onDragEnd(reorderItems(newOrder.map(([id]) => id)), a, b);
         }, 0);
 
         return {

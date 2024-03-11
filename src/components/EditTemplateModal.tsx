@@ -16,17 +16,16 @@ import {
   Portal,
   VStack,
 } from '@chakra-ui/react';
-import { type PrimitiveAtom, atom, useAtom } from 'jotai';
-import { useAtomCallback } from 'jotai/utils';
-import { without } from 'lodash-es';
-import { useCallback, useEffect, useRef } from 'react';
+import { useAtom } from 'jotai';
+import { splitAtom } from 'jotai/utils';
+import { focusAtom } from 'jotai-optics';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LuMoreHorizontal } from 'react-icons/lu';
 import { useMemoOne } from 'use-memo-one';
 
 import {
   SlotType,
-  type Slot,
   type TemplateAtom,
   getSlotDefaults,
 } from '../atoms/template';
@@ -72,53 +71,13 @@ export function EditTemplateModal({
     scrollWrapperRef.current?.scrollBy(0, dir * 3);
   }, []);
 
-  // can use useState, prevent HMR break useMemo
-  const slotAtomsAtom = useMemoOne(() => {
-    const a = atom<PrimitiveAtom<Slot>[]>([]);
-
-    if (import.meta.env.DEV) {
-      a.debugLabel = `slotsAtom`;
-    }
-
-    return a;
-  }, []);
-  const makeSlotAtomsAtom = useAtomCallback(
-    useCallback(
-      (get, set) => {
-        const { slots } = get(templateAtom);
-
-        set(
-          slotAtomsAtom,
-          slots.map((s) => {
-            const a = atom(s);
-
-            if (import.meta.env.DEV) {
-              a.debugLabel = `slotAtom(${s.id})`;
-            }
-
-            return a;
-          }),
-        );
-      },
-      [slotAtomsAtom, templateAtom],
-    ),
-  );
-  const [slotAtoms, setSlotAtoms] = useAtom(slotAtomsAtom);
-
-  const create = useAtomCallback(
-    useCallback(
-      (get, set) => {
-        const slots = get(slotAtomsAtom).map((a) => get(a));
-
-        set(templateAtom, { slots });
-      },
-      [templateAtom, slotAtomsAtom],
-    ),
-  );
-
-  useEffect(() => {
-    makeSlotAtomsAtom();
-  }, [makeSlotAtomsAtom]);
+  const slotsAtom = useMemoOne(() => {
+    return focusAtom(templateAtom, (o) => o.prop('slots'));
+  }, [templateAtom]);
+  const splittedSlotsAtomAtom = useMemoOne(() => {
+    return splitAtom(slotsAtom, (s) => s.id);
+  }, [slotsAtom]);
+  const [slotAtoms, slotAtomsDispatch] = useAtom(splittedSlotsAtomAtom);
 
   return (
     <Modal
@@ -157,7 +116,6 @@ export function EditTemplateModal({
             fontSize="sm"
             colorScheme="blue"
             onClick={() => {
-              create();
               onClose();
             }}
           >
@@ -199,7 +157,7 @@ export function EditTemplateModal({
                       <MenuList zIndex="popover">
                         <MenuItem
                           onClick={() => {
-                            setSlotAtoms(without(slotAtoms, a));
+                            slotAtomsDispatch({ type: 'remove', atom: a });
                           }}
                         >
                           Delelte
@@ -209,8 +167,8 @@ export function EditTemplateModal({
                   </Menu>
                 </Box>
               )}
-              onDragEnd={(items) => {
-                setSlotAtoms(items);
+              onDragEnd={(_items, atom, before) => {
+                slotAtomsDispatch({ type: 'move', atom, before });
               }}
               getScrollBounds={getScrollBounds}
               onScroll={handleScroll}
@@ -232,14 +190,10 @@ export function EditTemplateModal({
                   variant="outline"
                   colorScheme="blackAlpha"
                   onClick={() => {
-                    const s = getSlotDefaults(st);
-                    const a = atom(s);
-
-                    if (import.meta.env.DEV) {
-                      a.debugLabel = `slotAtom(${s.id})`;
-                    }
-
-                    setSlotAtoms([...slotAtoms, a]);
+                    slotAtomsDispatch({
+                      type: 'insert',
+                      value: getSlotDefaults(st),
+                    });
                   }}
                 >
                   {t(`slotType.${st}`)}
