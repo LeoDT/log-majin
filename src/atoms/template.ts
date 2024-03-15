@@ -1,6 +1,6 @@
 import { atom, type WritableAtom } from 'jotai';
-import { atomFamily, atomWithStorage, unwrap } from 'jotai/utils';
-import { omit } from 'lodash-es';
+import { atomFamily } from 'jotai/utils';
+import { omit, orderBy } from 'lodash-es';
 import { nanoid } from 'nanoid';
 
 import { randomColorForTemplate } from '../colors';
@@ -31,7 +31,6 @@ export interface BaseSlot {
 
 export interface TextSlot extends BaseSlot {
   kind: SlotType.Text;
-  content: string;
 }
 
 export interface TextInputSlot extends BaseSlot {
@@ -81,7 +80,6 @@ export function makeDefaultTemplate(id: string): Template {
         name: i18n.t('slot.defaultNameForText'),
         kind: SlotType.Text,
         id: nanoid(),
-        content: '',
       },
       {
         name: i18n.t('slot.defaultNameForTextInput'),
@@ -116,30 +114,23 @@ export interface TemplateUpdateParams extends Partial<Template> {
 
 export type TemplateAtom = WritableAtom<Template, [TemplateUpdateParams], void>;
 
-export const templateAtomFamily = atomFamily<string | void, TemplateAtom>(
-  (id: string | void) => {
-    const key = id ?? nanoid();
-    const defaults = makeDefaultTemplate(key);
-
-    const baseAtom = atomWithStorage(key, defaults, templateStorage, {
-      getOnInit: true,
-    });
-    const unwrapped = unwrap(baseAtom, (prev) => prev ?? defaults);
+export const templateAtomFamily = atomFamily<Template, TemplateAtom>(
+  (t: Template) => {
+    const baseAtom = atom(t);
 
     if (import.meta.env.DEV) {
       baseAtom.debugPrivate = true;
-      unwrapped.debugPrivate = true;
     }
 
     const anAtom = atom(
-      (get) => get(unwrapped),
+      (get) => get(baseAtom),
       (
         get,
         set,
         { shouldUpdateTimestamp, ...update }: TemplateUpdateParams,
       ) => {
         const newTemplate: Template = {
-          ...get(unwrapped),
+          ...get(baseAtom),
           ...update,
         };
 
@@ -147,32 +138,43 @@ export const templateAtomFamily = atomFamily<string | void, TemplateAtom>(
           newTemplate.updateAt = new Date();
         }
 
-        set(unwrapped, newTemplate);
+        set(baseAtom, newTemplate);
+
+        db.put('template', newTemplate);
       },
     );
 
     if (import.meta.env.DEV) {
-      anAtom.debugLabel = `templateAtom.${id}`;
+      anAtom.debugLabel = `templateAtom.${t.id}`;
     }
 
     return anAtom;
   },
-  (a, b) => a === b,
+  (a, b) => a.id === b.id,
 );
 
 export const templateIdsAtom = atom(() => db.getAllKeys('template'));
+export const templateAtomsAtom = atom<TemplateAtom[]>([]);
 
-export interface CreateTemplateParams extends Omit<Template, 'id'> {}
+export const loadTemplatesAtom = atom(null, async (_get, set) => {
+  const templates = await db.getAll('template');
+
+  return set(
+    templateAtomsAtom,
+    orderBy(templates, ['createAt']).map((t) => templateAtomFamily(t)),
+  );
+});
 
 // newly created atomWithStorage will not persist
 // use this to create new atom and persist
 export const createTemplateAtom = atom(
   null,
-  (_get, set, create: CreateTemplateParams) => {
-    const id = nanoid();
-    const anAtom = templateAtomFamily(id);
+  async (get, set, create?: Template) => {
+    const t = create ?? makeDefaultTemplate(nanoid());
+    const anAtom = templateAtomFamily(t);
 
-    set(anAtom, create);
+    set(anAtom, t);
+    set(templateAtomsAtom, [...get(templateAtomsAtom), anAtom]);
 
     return anAtom;
   },
@@ -217,7 +219,7 @@ export function getSlotDefaults(kind: SlotType, id: string = nanoid()): Slot {
       };
 
     case SlotType.Text:
-      return { id, kind, content: '', name: i18n.t('slot.defaultNameForText') };
+      return { id, kind, name: i18n.t('slot.defaultNameForText') };
 
     case SlotType.TextInput:
       return { id, kind, name: i18n.t('slot.defaultNameForTextInput') };

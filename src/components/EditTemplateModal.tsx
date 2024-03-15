@@ -13,10 +13,11 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  ModalProps,
   Portal,
   VStack,
 } from '@chakra-ui/react';
-import { useAtom } from 'jotai';
+import { useAtom } from 'jotai/react';
 import { splitAtom } from 'jotai/utils';
 import { focusAtom } from 'jotai-optics';
 import { useCallback, useRef } from 'react';
@@ -34,9 +35,7 @@ import { DraggableList } from './DraggableList';
 import { EditTemplateName } from './EditTemplateName';
 import { SlotEditor } from './SlotEditor';
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
+interface Props extends Omit<ModalProps, 'children'> {
   templateAtom: TemplateAtom;
 }
 
@@ -49,8 +48,8 @@ const allSlotTypes = [
 
 export function EditTemplateModal({
   templateAtom,
-  isOpen,
   onClose,
+  ...modalProps
 }: Props): JSX.Element {
   const { t } = useTranslation();
   const scrollWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -72,48 +71,46 @@ export function EditTemplateModal({
   }, []);
 
   const slotsAtom = useMemoOne(() => {
-    return focusAtom(templateAtom, (o) => o.prop('slots'));
+    const a = focusAtom(templateAtom, (o) => o.prop('slots'));
+
+    if (import.meta.env.DEV) {
+      a.debugLabel = `${templateAtom.debugLabel}.slots`;
+    }
+
+    return a;
   }, [templateAtom]);
   const splittedSlotsAtomAtom = useMemoOne(() => {
-    return splitAtom(slotsAtom, (s) => s.id);
+    const a = splitAtom(slotsAtom, (s) => s.id);
+    a.debugPrivate = true;
+
+    return a;
   }, [slotsAtom]);
   const [slotAtoms, slotAtomsDispatch] = useAtom(splittedSlotsAtomAtom);
 
+  if (import.meta.env.DEV) {
+    slotAtoms.forEach((a, i) => {
+      a.debugLabel = `${templateAtom.debugLabel}.slot.${i}`;
+    });
+  }
+
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={onClose}
       size={['full', 'xl']}
       scrollBehavior="inside"
       motionPreset="slideInBottom"
+      onClose={onClose}
+      {...modalProps}
     >
-      <ModalOverlay onPointerDown={(e) => e.stopPropagation()} />
-      <ModalContent
-        onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        <ModalHeader p="2" fontSize="md" display="flex" shadow="base">
-          <Button
-            variant="link"
-            fontSize="sm"
-            colorScheme="blue"
-            onClick={onClose}
-          >
-            {t('cancel')}
-          </Button>
-
-          <Box
-            mx="auto"
-            flexBasis="min-content"
-            display="flex"
-            alignItems="center"
-          >
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader p="2" display="flex" shadow="base">
+          <Box flexBasis="min-content" display="flex">
             <EditTemplateName templateAtom={templateAtom} />
           </Box>
 
           <Button
+            ml="auto"
             variant="link"
-            fontSize="sm"
             colorScheme="blue"
             onClick={() => {
               onClose();

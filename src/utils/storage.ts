@@ -21,6 +21,13 @@ interface DB extends DBSchema {
     value: Log;
     indexes: { 'by-create': Date; 'by-template-create': [string, Date] };
   };
+  inputHistory: {
+    key: string;
+    value: {
+      slotId: string;
+      history: Array<string>;
+    };
+  };
 }
 
 export function ensureDB() {
@@ -45,6 +52,10 @@ export function ensureDB() {
 
       logStore.createIndex('by-template-create', ['templateId', 'createAt']);
       logStore.createIndex('by-create', 'createAt');
+
+      db.createObjectStore('inputHistory', {
+        keyPath: 'slotId',
+      });
     },
   });
 }

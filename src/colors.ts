@@ -12,7 +12,7 @@ export const colorsForTemplate = [
   'purple',
   'pink',
 ]
-  .map((c) => [`${c}.300`, `${c}.500`, `${c}.700`])
+  .map((c) => [`${c}.400`, `${c}.600`, `${c}.800`])
   .flat();
 
 export function randomColorForTemplate() {

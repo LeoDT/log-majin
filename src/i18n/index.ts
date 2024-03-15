@@ -26,7 +26,6 @@ export const resources = {
       },
 
       createTemplateButton: 'Create Template',
-      createTemplateModalTitle: '$t(createTemplateButton)',
 
       slotType: {
         text: 'Text',
@@ -84,7 +83,7 @@ export const resources = {
         defaultName: '新类型',
       },
 
-      createTemplate: '新增类型',
+      createTemplateButton: '新增类型',
 
       slotType: {
         text: '文本',

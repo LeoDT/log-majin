@@ -1,5 +1,5 @@
 import { Box, HStack, Text } from '@chakra-ui/react';
-import { a, useSprings } from '@react-spring/web';
+import { a, useSprings, config } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import { useSetAtom } from 'jotai';
 import { clamp, range } from 'lodash-es';
@@ -73,7 +73,6 @@ export function MainTab(): JSX.Element {
         return { x, opacity };
       });
     },
-    { eventOptions: { passive: false } },
   );
 
   const jumpTo = useCallback(
@@ -85,6 +84,10 @@ export function MainTab(): JSX.Element {
           return {
             x: (i - activeScreenIndex.current) * screenW,
             opacity: i === activeScreenIndex.current ? 1 : 0.4,
+            config: {
+              tension: 210,
+              friction: 26,
+            },
           };
         }),
       );

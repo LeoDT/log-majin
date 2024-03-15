@@ -1,4 +1,5 @@
 import { atom } from 'jotai';
+import { uniq } from 'lodash-es';
 import { nanoid } from 'nanoid';
 
 import { createIDBStorageForAtom } from '../utils/atom';
@@ -11,18 +12,14 @@ import {
   TemplateRevision,
   hashTemplate,
   makeTemplateRevision,
+  needRecordHistorySlotTypes,
 } from './template';
 
-export interface SlotValue<T = string> {
-  id: string;
-  value: T;
-}
+const MAX_INPUT_HISTORY = 8;
 
-export interface SlotValueTypes {
-  [SlotType.Text]: undefined;
-  [SlotType.TextInput]: SlotValue<string>;
-  [SlotType.Select]: SlotValue<string>;
-  [SlotType.Number]: SlotValue<string>;
+export interface SlotValue {
+  slotId: string;
+  value: string;
 }
 
 export interface Log {
@@ -41,19 +38,25 @@ export interface LogWithTemplate extends Log {
 export const logStorage = createIDBStorageForAtom(db, 'log');
 
 export function makeDefaultLog(template: Template): Log {
-  const values = template.slots.map((p) => ({
-    id: p.id,
-    value: p.kind === SlotType.Text ? p.content : '',
+  const values = template.slots.map((s) => ({
+    slotId: s.id,
+    value: s.kind === SlotType.Text ? s.name : '',
   }));
 
   return {
     id: nanoid(),
     slotValues: values,
     createAt: new Date(),
-    content: values.map((p) => p.value).join(' '),
+    content: values.map((sv) => sv.value).join(' '),
     templateId: template.id,
     templateRevisionId: '',
   };
+}
+
+export function validateSlotValues(values: SlotValue[]) {
+  return values.every(
+    ({ value }) => value !== '' && value !== undefined && value !== null,
+  );
 }
 
 export interface CommitLogParams {
@@ -63,9 +66,9 @@ export interface CommitLogParams {
 export const commitLogAtom = atom(
   null,
   async (get, _set, { slotValues, templateAtom }: CommitLogParams) => {
-    const template = await get(templateAtom);
+    const template = get(templateAtom);
     const tx = db.transaction(
-      ['template', 'templateRevision', 'log'],
+      ['template', 'templateRevision', 'log', 'inputHistory'],
       'readwrite',
     );
 
@@ -116,8 +119,45 @@ export const commitLogAtom = atom(
     };
 
     await tx.objectStore('log').put(log);
+
+    for (const sv of slotValues) {
+      const slot = template.slots.find(({ id }) => id === sv.slotId);
+
+      if (slot && needRecordHistorySlotTypes.includes(slot.kind)) {
+        const inputHistory = (await tx
+          .objectStore('inputHistory')
+          .get(sv.slotId)) ?? { slotId: sv.slotId, history: [] };
+
+        await tx.objectStore('inputHistory').put({
+          slotId: inputHistory.slotId,
+          history: uniq([sv.value, ...inputHistory.history]).slice(
+            0,
+            MAX_INPUT_HISTORY,
+          ),
+        });
+      }
+    }
+
     await tx.done;
 
     return log;
   },
 );
+
+export function makeInputHistoryAtom(slotId: string) {
+  const a = atom(async () => {
+    const ih = await db.get('inputHistory', slotId);
+
+    if (ih) {
+      return ih.history;
+    }
+
+    return [];
+  });
+
+  if (import.meta.env.DEV) {
+    a.debugLabel = 'slot.${slotId}.inputHistoryAtom';
+  }
+
+  return a;
+}

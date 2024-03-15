@@ -4,14 +4,16 @@ import { useCallback, useEffect, useRef } from 'react';
 export function AutoSizeInput({
   value,
   maxW,
+  fontSize,
+  placeholder,
   ...props
 }: InputProps): JSX.Element {
   const sizerRef = useRef<HTMLDivElement | null>(null);
   const updateSizer = useCallback(() => {
     if (sizerRef.current) {
-      sizerRef.current.dataset.value = value?.toString();
+      sizerRef.current.dataset.value = value ? value.toString() : placeholder;
     }
-  }, [value]);
+  }, [value, placeholder]);
 
   useEffect(() => {
     updateSizer();
@@ -33,6 +35,7 @@ export function AutoSizeInput({
         py: 0,
         fontFamily: 'sans-serif',
         fontWeight: 'bold',
+        fontSize,
       }}
       maxW={maxW}
     >
@@ -45,8 +48,10 @@ export function AutoSizeInput({
         variant="unstyled"
         fontFamily="sans-serif"
         fontWeight="bold"
-        value={value}
+        value={value ?? placeholder}
+        placeholder={placeholder}
         maxW={maxW}
+        fontSize={fontSize}
         {...props}
       />
     </Box>

@@ -1,35 +1,29 @@
-import { Button, useDisclosure } from '@chakra-ui/react';
+import { Button } from '@chakra-ui/react';
+import { useSetAtom } from 'jotai';
 import { useTranslation } from 'react-i18next';
-import { useMemoOne } from 'use-memo-one';
 
-import { templateAtomFamily } from '../atoms/template';
-
-import { EditTemplateModal } from './EditTemplateModal';
+import { createTemplateAtom } from '../atoms/template';
+import { editTemplateDisclosure } from '../atoms/ui';
 
 export function CreateTemplateButton(): JSX.Element {
   const { t } = useTranslation();
-  const { isOpen, onClose, onOpen } = useDisclosure();
-  const templateAtom = useMemoOne(() => {
-    return templateAtomFamily();
-  }, []);
+  const createTemplate = useSetAtom(createTemplateAtom);
+  const startEdit = useSetAtom(editTemplateDisclosure.onOpen);
 
   return (
     // div to prevent dragging the MainTab
     <div onPointerDown={(e) => e.stopPropagation()}>
       <Button
-        onClick={onOpen}
+        onClick={async () => {
+          const atom = await createTemplate();
+          startEdit(atom);
+        }}
         w="full"
         colorScheme="blackAlpha"
         bgColor="black"
       >
         {t('createTemplateButton')}
       </Button>
-
-      <EditTemplateModal
-        isOpen={isOpen}
-        onClose={onClose}
-        templateAtom={templateAtom}
-      />
     </div>
   );
 }

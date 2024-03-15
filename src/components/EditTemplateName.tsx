@@ -9,6 +9,7 @@ import {
   SimpleGrid,
 } from '@chakra-ui/react';
 import { useAtom } from 'jotai';
+import { useTranslation } from 'react-i18next';
 
 import { type TemplateAtom } from '../atoms/template';
 import { colorsForTemplate } from '../colors';
@@ -20,11 +21,12 @@ interface Props {
 }
 
 export function EditTemplateName({ templateAtom }: Props): JSX.Element {
+  const { t } = useTranslation();
   const [{ name, color }, setTemplate] = useAtom(templateAtom);
 
   return (
     <HStack display="inline-flex" gap="0">
-      <Popover>
+      <Popover placement="bottom-start">
         <PopoverTrigger>
           <Button
             size="xs"
@@ -53,8 +55,10 @@ export function EditTemplateName({ templateAtom }: Props): JSX.Element {
       </Popover>
 
       <AutoSizeInput
-        maxW={['50vw', 'sm']}
+        maxW={['60vw', 'sm']}
+        fontSize={['md', 'lg']}
         value={name}
+        placeholder={t('template.defaultName')}
         onChange={(e) => {
           setTemplate({ name: e.target.value });
         }}
