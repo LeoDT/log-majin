@@ -22,6 +22,7 @@ import { useMemoOne } from 'use-memo-one';
 
 import { commitLogAtom, SlotValue } from '../atoms/log';
 import { SlotType, TemplateAtom, needInputSlotTypes } from '../atoms/template';
+import { useLogCreatedToast } from '../utils/log';
 import { useThemeBasedTemplateColor } from '../utils/template';
 
 import { CreateLogModalConfirmButton } from './CreateLogModalConfirmButton';
@@ -39,6 +40,7 @@ export function CreateLogModal({
 }: Props): JSX.Element {
   const { t } = useTranslation();
   const template = useAtomValue(templateAtom);
+  const toast = useLogCreatedToast(template.name);
   const templateColors = useThemeBasedTemplateColor(template.color);
   const slotValuesAtom = useMemoOne(() => {
     const base = atom<SlotValue[]>(
@@ -88,14 +90,16 @@ export function CreateLogModal({
 
   const handleCommitLog = useAtomCallback(
     useCallback(
-      async (get, set) => {
+      (get, set) => {
         const slotValues = get(slotValuesAtom);
 
-        await set(commitLogAtom, { slotValues, templateAtom });
+        const p = set(commitLogAtom, { slotValues, templateAtom });
+
+        toast(p);
 
         onClose();
       },
-      [onClose, slotValuesAtom, templateAtom],
+      [onClose, slotValuesAtom, templateAtom, toast],
     ),
   );
 

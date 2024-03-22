@@ -5,7 +5,11 @@ import './i18n';
 
 import './main.css';
 
-import App from './App.tsx';
+import App from './App';
+
+import './utils/debug';
+
+import './utils/dom';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

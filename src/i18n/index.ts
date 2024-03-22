@@ -60,6 +60,10 @@ export const resources = {
       editTemplateIconTab: 'Icon',
 
       textInputHistoryLabel: 'History',
+
+      toasts: {
+        logCreated: 'Log {{templateName}} Added',
+      },
     },
   },
   zh: {
@@ -118,6 +122,10 @@ export const resources = {
       editLogTypeIconTab: '图形',
 
       textInputHistoryLabel: '历史',
+
+      toasts: {
+        logCreated: '{{templateName}}记下了',
+      },
     },
   },
 };

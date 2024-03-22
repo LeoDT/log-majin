@@ -2,7 +2,6 @@ import { atom } from 'jotai';
 import { uniq } from 'lodash-es';
 import { nanoid } from 'nanoid';
 
-import { createIDBStorageForAtom } from '../utils/atom';
 import { db } from '../utils/storage';
 
 import {
@@ -11,6 +10,7 @@ import {
   TemplateAtom,
   TemplateRevision,
   hashTemplate,
+  isNoInputTemplate,
   makeTemplateRevision,
   needRecordHistorySlotTypes,
 } from './template';
@@ -35,7 +35,82 @@ export interface LogWithTemplate extends Log {
   templateRevision: TemplateRevision;
 }
 
-export const logStorage = createIDBStorageForAtom(db, 'log');
+export const logsAtom = atom<Log[]>([]);
+
+export function makeLogLoader(pageSize: number = 20) {
+  type Key = Date | undefined;
+
+  // use openCursor with prev, so the lowerKey is the most recent
+  let lower: Key;
+  let upper: Key;
+
+  const makeCursor = (lower: Key, upper: Key) => {
+    let range: IDBKeyRange | undefined = undefined;
+
+    if (lower && upper) {
+      range = IDBKeyRange.bound(lower, upper, true, true);
+    } else if (!lower && upper) {
+      range = IDBKeyRange.upperBound(upper, true);
+    } else if (lower && !upper) {
+      range = IDBKeyRange.lowerBound(upper, true);
+    }
+
+    return db
+      .transaction('log')
+      .store.index('by-create')
+      .openCursor(range, 'prev');
+  };
+
+  const loadNext = async () => {
+    let cursor = await makeCursor(undefined, upper);
+
+    const r: Log[] = [];
+
+    while (cursor && r.length < pageSize) {
+      if (!lower) {
+        lower = cursor.key;
+      }
+
+      r.push(cursor.value);
+
+      upper = cursor.key;
+
+      cursor = await cursor.continue();
+    }
+
+    if (cursor?.key) {
+      upper = cursor?.key;
+    }
+
+    return r;
+  };
+
+  const initedAtom = atom(false);
+  const initAtom = atom(null, async (get, set) => {
+    if (!get(initedAtom)) {
+      set(logsAtom, []);
+      await set(nextAtom);
+      set(initedAtom, true);
+    }
+  });
+
+  const nextAtom = atom(null, async (_get, set) => {
+    const more = await loadNext();
+
+    if (more.length > 0) {
+      set(logsAtom, (logs) => [...logs, ...more]);
+
+      return more;
+    }
+
+    return null;
+  });
+
+  return {
+    initAtom,
+    nextAtom,
+  };
+}
 
 export function makeDefaultLog(template: Template): Log {
   const values = template.slots.map((s) => ({
@@ -65,7 +140,7 @@ export interface CommitLogParams {
 }
 export const commitLogAtom = atom(
   null,
-  async (get, _set, { slotValues, templateAtom }: CommitLogParams) => {
+  async (get, set, { slotValues, templateAtom }: CommitLogParams) => {
     const template = get(templateAtom);
     const tx = db.transaction(
       ['template', 'templateRevision', 'log', 'inputHistory'],
@@ -140,7 +215,29 @@ export const commitLogAtom = atom(
 
     await tx.done;
 
+    // add log to the head of logs
+    set(logsAtom, (logs) => [log, ...logs]);
+
     return log;
+  },
+);
+
+export const commitNoInputLogAtom = atom(
+  null,
+  async (get, set, { templateAtom }: { templateAtom: TemplateAtom }) => {
+    const t = get(templateAtom);
+
+    if (isNoInputTemplate(t)) {
+      await set(commitLogAtom, {
+        templateAtom,
+        slotValues: t.slots.map((s) => ({
+          slotId: s.id,
+          value: s.name,
+        })),
+      });
+    } else {
+      throw TypeError('template need input');
+    }
   },
 );
 

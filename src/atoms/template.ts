@@ -26,7 +26,7 @@ export const needRecordHistorySlotTypes = [SlotType.TextInput];
 export interface BaseSlot {
   kind: SlotType;
   id: string;
-  name: string;
+  name: string; // used as log content in SlotType.Text
 }
 
 export interface TextSlot extends BaseSlot {
@@ -156,6 +156,14 @@ export const templateAtomFamily = atomFamily<Template, TemplateAtom>(
 export const templateIdsAtom = atom(() => db.getAllKeys('template'));
 export const templateAtomsAtom = atom<TemplateAtom[]>([]);
 
+export const templateMapAtom = atom((get) => {
+  const templates = get(templateAtomsAtom)
+    .map((ta) => get(ta))
+    .map((t) => [t.id, t] as [string, Template]);
+
+  return new Map<string, Template>(templates);
+});
+
 export const loadTemplatesAtom = atom(null, async (_get, set) => {
   const templates = await db.getAll('template');
 
@@ -226,4 +234,8 @@ export function getSlotDefaults(kind: SlotType, id: string = nanoid()): Slot {
     case SlotType.Number:
       return { id, kind, name: i18n.t('slot.defaultNameForNumber') };
   }
+}
+
+export function isNoInputTemplate(t: Template) {
+  return t.slots.every(({ kind }) => !needInputSlotTypes.includes(kind));
 }

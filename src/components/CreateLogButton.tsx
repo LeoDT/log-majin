@@ -2,8 +2,10 @@ import { Box, Button, Icon, IconButton, Text } from '@chakra-ui/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { LuMoreHorizontal } from 'react-icons/lu';
 
-import { TemplateAtom } from '../atoms/template';
+import { commitNoInputLogAtom } from '../atoms/log';
+import { TemplateAtom, isNoInputTemplate } from '../atoms/template';
 import { createLogDisclosure, editTemplateDisclosure } from '../atoms/ui';
+import { useLogCreatedToast } from '../utils/log';
 import { useThemeBasedTemplateColor } from '../utils/template';
 
 interface Props {
@@ -11,10 +13,12 @@ interface Props {
 }
 
 export function CreateLogButton({ templateAtom }: Props): JSX.Element {
-  const t = useAtomValue(templateAtom);
-  const colors = useThemeBasedTemplateColor(t.color);
+  const template = useAtomValue(templateAtom);
+  const toast = useLogCreatedToast(template.name);
+  const colors = useThemeBasedTemplateColor(template.color);
   const startEdit = useSetAtom(editTemplateDisclosure.onOpen);
   const startLog = useSetAtom(createLogDisclosure.onOpen);
+  const commitNoInputLog = useSetAtom(commitNoInputLogAtom);
 
   return (
     <Box pos="relative">
@@ -32,7 +36,7 @@ export function CreateLogButton({ templateAtom }: Props): JSX.Element {
         minW="6"
         zIndex="1"
         icon={<Icon as={LuMoreHorizontal} boxSize="1.75em" color="white" />}
-        onClick={(e) => {
+        onClick={() => {
           startEdit(templateAtom);
         }}
       />
@@ -49,9 +53,19 @@ export function CreateLogButton({ templateAtom }: Props): JSX.Element {
         color={colors.fg}
         bgGradient={colors.bgGradient}
         _hover={{ bgColor: colors.bgAlt, color: colors.fgAlt }}
-        onClick={() => startLog(templateAtom)}
+        onClick={() => {
+          if (isNoInputTemplate(template)) {
+            const p = commitNoInputLog({ templateAtom });
+
+            toast(p);
+
+            return;
+          }
+
+          startLog(templateAtom);
+        }}
       >
-        <Text noOfLines={2}>{t.name}</Text>
+        <Text noOfLines={2}>{template.name}</Text>
       </Button>
     </Box>
   );
