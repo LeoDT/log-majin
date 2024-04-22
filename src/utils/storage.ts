@@ -6,6 +6,9 @@ import { Template, TemplateRevision } from '../atoms/template';
 const DB_NAME = 'log-majin-db';
 const DB_VERSION = 1;
 
+export const KEYRANGE_MIN = 0;
+export const KEYRANGE_MAX = [];
+
 interface DB extends DBSchema {
   template: {
     key: string;
@@ -14,12 +17,15 @@ interface DB extends DBSchema {
   templateRevision: {
     key: string;
     value: TemplateRevision;
-    indexes: { 'by-template-create': [string, Date] };
+    indexes: { 'by-create-template': [string, Date] };
   };
   log: {
     key: string;
     value: Log;
-    indexes: { 'by-create': Date; 'by-template-create': [string, Date] };
+    indexes: {
+      'by-create': Date;
+      'by-create-content-template': [string, string, Date];
+    };
   };
   inputHistory: {
     key: string;
@@ -41,16 +47,20 @@ export function ensureDB() {
         keyPath: 'id',
       });
 
-      revisionStore.createIndex('by-template-create', [
-        'templateId',
+      revisionStore.createIndex('by-create-template', [
         'createAt',
+        'templateId',
       ]);
 
       const logStore = db.createObjectStore('log', {
         keyPath: 'id',
       });
 
-      logStore.createIndex('by-template-create', ['templateId', 'createAt']);
+      logStore.createIndex('by-create-content-template', [
+        'templateId',
+        'content',
+        'createAt',
+      ]);
       logStore.createIndex('by-create', 'createAt');
 
       db.createObjectStore('inputHistory', {
@@ -61,3 +71,5 @@ export function ensureDB() {
 }
 
 export const db = await ensureDB();
+
+window.db = db;

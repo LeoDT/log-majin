@@ -93,6 +93,7 @@ export function LogList(): JSX.Element {
             onScroll={handleScroll}
             ref={listRef}
             outerRef={listElRef}
+            style={{ touchAction: 'pan-y' }}
           >
             {({ index, style, data }) => {
               const l = data[index];

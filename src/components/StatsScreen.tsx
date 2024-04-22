@@ -2,6 +2,7 @@ import { ScreenId, useScreenShownEffect } from '../atoms/ui';
 
 export const id: ScreenId = 'stats';
 export const name = 'statsTab';
+export const scroll = true;
 
 export function Screen(): JSX.Element {
   useScreenShownEffect(

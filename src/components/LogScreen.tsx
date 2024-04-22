@@ -1,4 +1,5 @@
-import { useSetAtom } from 'jotai';
+import { Box } from '@chakra-ui/react';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { useCallback } from 'react';
 import { useMemoOne } from 'use-memo-one';
 
@@ -10,10 +11,12 @@ import { LogLoaderContext } from './LogLoaderContext';
 
 export const id: ScreenId = 'log';
 export const name = 'logTab';
+export const scroll = false;
 
 export function Screen(): JSX.Element {
   const loader = useMemoOne(() => makeLogLoader(20), []);
   const init = useSetAtom(loader.initAtom);
+  const inited = useAtomValue(loader.initedAtom);
   const effect = useCallback(() => {
     init();
   }, [init]);
@@ -22,7 +25,16 @@ export function Screen(): JSX.Element {
 
   return (
     <LogLoaderContext.Provider value={loader}>
-      <LogList />
+      {inited ? (
+        <Box h="full" display="flex" flexDir="column">
+          <Box>123</Box>
+          <Box flexGrow="1">
+            <LogList />
+          </Box>
+        </Box>
+      ) : (
+        <div></div>
+      )}
     </LogLoaderContext.Provider>
   );
 }

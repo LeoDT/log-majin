@@ -17,6 +17,7 @@ import { EditTemplateModal } from './EditTemplateModal';
 
 export const id: ScreenId = 'template';
 export const name = 'createTab';
+export const scroll = true;
 
 export function Screen(): JSX.Element {
   const loadTemplates = useSetAtom(loadTemplatesAtom);

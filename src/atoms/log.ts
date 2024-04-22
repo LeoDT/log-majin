@@ -2,7 +2,7 @@ import { atom } from 'jotai';
 import { uniq } from 'lodash-es';
 import { nanoid } from 'nanoid';
 
-import { db } from '../utils/storage';
+import { KEYRANGE_MAX, KEYRANGE_MIN, db } from '../utils/storage';
 
 import {
   SlotType,
@@ -107,6 +107,7 @@ export function makeLogLoader(pageSize: number = 20) {
   });
 
   return {
+    initedAtom,
     initAtom,
     nextAtom,
   };
@@ -149,18 +150,18 @@ export const commitLogAtom = atom(
 
     const lastLog = await tx
       .objectStore('log')
-      .index('by-template-create')
+      .index('by-create-content-template')
       .openCursor(
         IDBKeyRange.bound(
-          [template.id, new Date(0)],
-          [template.id, new Date()],
+          [template.id, KEYRANGE_MIN, new Date(0)],
+          [template.id, KEYRANGE_MAX, new Date()],
         ),
         'prev',
       ); // get last log logged with this template
 
     let maybeRevision: TemplateRevision | undefined = undefined;
 
-    if (lastLog) {
+    if (lastLog?.value) {
       maybeRevision = await tx
         .objectStore('templateRevision')
         .get(lastLog.value.templateRevisionId);
@@ -175,20 +176,28 @@ export const commitLogAtom = atom(
       }
     }
 
-    const revision = maybeRevision ?? makeTemplateRevision(template);
-    const templateHash = hashTemplate(template);
-    const revisionHash = hashTemplate(revision);
+    if (maybeRevision) {
+      const templateHash = hashTemplate(template);
+      const revisionHash = hashTemplate(maybeRevision);
 
-    if (templateHash !== revisionHash) {
-      // template changed since last log
-      await tx.objectStore('templateRevision').put(revision);
+      if (templateHash !== revisionHash) {
+        // template changed since last log
+
+        maybeRevision = makeTemplateRevision(template);
+        await tx.objectStore('templateRevision').put(maybeRevision);
+      }
+    } else {
+      maybeRevision = makeTemplateRevision(template);
+      await tx.objectStore('templateRevision').put(maybeRevision);
     }
+
+    if (!maybeRevision) throw Error('assert maybeRevision');
 
     const log: Log = {
       id: nanoid(),
       createAt: new Date(),
       templateId: template.id,
-      templateRevisionId: revision.id,
+      templateRevisionId: maybeRevision.id,
       slotValues,
       content: slotValues.map((p) => p.value).join(' '),
     };

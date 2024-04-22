@@ -15,9 +15,13 @@ export function useLogCreatedToast(templateName: string) {
             position,
             title: t('toasts.logCreated', { templateName }),
           },
-          error: {
-            position,
-            title: 'Fail to Add Log',
+          error: (e) => {
+            console.log(e);
+
+            return {
+              position,
+              title: 'Fail to Add Log',
+            };
           },
         });
       } else {
@@ -28,6 +32,6 @@ export function useLogCreatedToast(templateName: string) {
         });
       }
     },
-    [templateName],
+    [t, templateName, toast],
   );
 }

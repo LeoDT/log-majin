@@ -13,10 +13,11 @@ import * as StatsScreen from './StatsScreen';
 import * as TemplateScreen from './TemplateScreen';
 
 const TABS = [TemplateScreen, LogScreen, StatsScreen].map(
-  ({ id, name, Screen }) => ({
+  ({ id, name, scroll, Screen }) => ({
     id,
     name: name as 'logTab' | 'createTab' | 'statsTab',
     children: <Screen />,
+    scroll,
   }),
 );
 
@@ -73,6 +74,7 @@ export function MainTab(): JSX.Element {
         return { x, opacity };
       });
     },
+    { axis: 'x' },
   );
 
   const jumpTo = useCallback(
@@ -124,7 +126,7 @@ export function MainTab(): JSX.Element {
         overflow="hidden"
         pt="1"
       >
-        {TABS.map(({ id, children }, i) => (
+        {TABS.map(({ id, children, scroll }, i) => (
           <a.div
             {...bind()}
             key={id}
@@ -134,7 +136,7 @@ export function MainTab(): JSX.Element {
               width: `${screenW}px`,
               touchAction: 'pan-y',
               x: tabsProps[i].x,
-              overflowY: 'auto',
+              overflowY: scroll ? 'auto' : 'hidden',
             }}
           >
             {children}
